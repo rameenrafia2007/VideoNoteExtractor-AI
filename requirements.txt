@@ -1,10 +1,10 @@
 streamlit>=1.32.0
 groq>=0.5.0
-openai-whisper>=20231117
-yt-dlp>=2024.1.1
+youtube-transcript-api>=0.6.2
 opencv-python-headless>=4.9.0
 pytesseract>=0.3.10
 Pillow>=10.2.0
 fpdf2>=2.7.9
 python-dotenv>=1.0.0
 numpy>=1.26.0
+yt-dlp>=2024.1.1

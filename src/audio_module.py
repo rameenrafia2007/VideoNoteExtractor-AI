@@ -1,74 +1,93 @@
 """
 audio_module.py
 ---------------
-Downloads audio from video URL and transcribes using OpenAI Whisper.
+Fetches transcript from YouTube using youtube-transcript-api.
+Supports auto-generated captions in any language.
 """
 
-import os
-import tempfile
-import yt_dlp
-import whisper
+from youtube_transcript_api import YouTubeTranscriptApi
+import re
+
+
+def get_video_id(url: str) -> str:
+    patterns = [
+        r'(?:v=|\/)([0-9A-Za-z_-]{11}).*',
+        r'(?:embed\/)([0-9A-Za-z_-]{11})',
+        r'(?:youtu\.be\/)([0-9A-Za-z_-]{11})',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    raise ValueError("Invalid YouTube URL")
 
 
 def download_audio(video_url: str, output_dir: str) -> str:
-    """Download audio from a video URL using yt-dlp."""
-    audio_path = os.path.join(output_dir, "audio.mp3")
-
-    ydl_opts = {
-        "format": "bestaudio/best",
-        "outtmpl": os.path.join(output_dir, "audio.%(ext)s"),
-        "postprocessors": [
-            {
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "mp3",
-                "preferredquality": "192",
-            }
-        ],
-        "quiet": True,
-        "no_warnings": True,
-        "http_headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        },
-    }
-
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([video_url])
-
-    # Find the downloaded audio file
-    for f in os.listdir(output_dir):
-        if f.startswith("audio") and f.endswith(".mp3"):
-            return os.path.join(output_dir, f)
-
-    return audio_path
+    return video_url
 
 
 def transcribe_audio(audio_path: str, model_size: str = "base") -> dict:
-    """
-    Transcribe audio using OpenAI Whisper.
-    Returns dict with 'text' and 'segments' (with timestamps).
-    """
-    model = whisper.load_model(model_size)
-    result = model.transcribe(audio_path, verbose=False)
+    video_id = get_video_id(audio_path)
 
-    segments = []
-    for seg in result.get("segments", []):
-        segments.append(
-            {
-                "start": round(seg["start"], 2),
-                "end": round(seg["end"], 2),
-                "text": seg["text"].strip(),
-            }
+    try:
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+
+        transcript = None
+
+        # Try English manual first
+        try:
+            transcript = transcript_list.find_manually_created_transcript([
+                                                                          'en'])
+        except Exception:
+            pass
+
+        # Try English auto-generated
+        if not transcript:
+            try:
+                transcript = transcript_list.find_generated_transcript(['en'])
+            except Exception:
+                pass
+
+        # Try any available language auto-generated
+        if not transcript:
+            try:
+                for t in transcript_list:
+                    transcript = t
+                    break
+            except Exception:
+                pass
+
+        if not transcript:
+            raise RuntimeError("No captions found for this video.")
+
+        transcript_data = transcript.fetch()
+
+        segments = []
+        full_text_parts = []
+
+        for item in transcript_data:
+            text = item.get("text", "").strip()
+            segments.append({
+                "start": round(item.get("start", 0), 2),
+                "end": round(item.get("start", 0) + item.get("duration", 0), 2),
+                "text": text,
+            })
+            full_text_parts.append(text)
+
+        return {
+            "full_text": " ".join(full_text_parts),
+            "segments": segments,
+            "language": getattr(transcript, 'language_code', 'en'),
+        }
+
+    except Exception as e:
+        raise RuntimeError(
+            f"Transcript fetch failed: {str(e)}\n"
+            "Please make sure the video has captions enabled (most YouTube videos do)."
         )
-
-    return {
-        "full_text": result["text"].strip(),
-        "segments": segments,
-        "language": result.get("language", "en"),
-    }
 
 
 def format_transcript_with_timestamps(segments: list) -> str:
-    """Format transcript segments with readable timestamps."""
     lines = []
     for seg in segments:
         start_min = int(seg["start"]) // 60

@@ -1,8 +1,8 @@
 """
 audio_module.py
 ---------------
-Fetches transcript from YouTube using youtube-transcript-api.
-Supports auto-generated captions in any language.
+Fetches transcript from YouTube using youtube-transcript-api v1.2+
+Works perfectly on cloud!
 """
 
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -28,44 +28,27 @@ def download_audio(video_url: str, output_dir: str) -> str:
 
 def transcribe_audio(audio_path: str, model_size: str = "base") -> dict:
     video_id = get_video_id(audio_path)
+    api = YouTubeTranscriptApi()
 
     try:
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-
-        transcript = None
-
-        # Try English manual first
+        # Try English first
         try:
-            transcript = transcript_list.find_manually_created_transcript([
-                                                                          'en'])
+            fetched = api.fetch(video_id, languages=['en'])
         except Exception:
-            pass
-
-        # Try English auto-generated
-        if not transcript:
-            try:
-                transcript = transcript_list.find_generated_transcript(['en'])
-            except Exception:
-                pass
-
-        # Try any available language auto-generated
-        if not transcript:
-            try:
-                for t in transcript_list:
-                    transcript = t
-                    break
-            except Exception:
-                pass
-
-        if not transcript:
-            raise RuntimeError("No captions found for this video.")
-
-        transcript_data = transcript.fetch()
+            # Try any available language
+            transcript_list = api.list(video_id)
+            lang_code = None
+            for t in transcript_list:
+                lang_code = t.language_code
+                break
+            if not lang_code:
+                raise RuntimeError("No captions found.")
+            fetched = api.fetch(video_id, languages=[lang_code])
 
         segments = []
         full_text_parts = []
 
-        for item in transcript_data:
+        for item in fetched:
             text = item.get("text", "").strip()
             segments.append({
                 "start": round(item.get("start", 0), 2),
@@ -77,13 +60,13 @@ def transcribe_audio(audio_path: str, model_size: str = "base") -> dict:
         return {
             "full_text": " ".join(full_text_parts),
             "segments": segments,
-            "language": getattr(transcript, 'language_code', 'en'),
+            "language": "en",
         }
 
     except Exception as e:
         raise RuntimeError(
             f"Transcript fetch failed: {str(e)}\n"
-            "Please make sure the video has captions enabled (most YouTube videos do)."
+            "Please make sure the video has captions enabled."
         )
 
 

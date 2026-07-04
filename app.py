@@ -189,14 +189,7 @@ with st.sidebar:
     st.markdown("<h2 style='margin-bottom: 1rem; font-weight:700;'>⚙️ Settings</h2>",
                 unsafe_allow_html=True)
 
-    groq_key = st.text_input(
-        "Groq API Key",
-        type="password",
-        value=os.getenv("GROQ_API_KEY", ""),
-        placeholder="Enter API key here..."
-    )
-    if groq_key:
-        os.environ["GROQ_API_KEY"] = groq_key
+    groq_key = os.getenv("GROQ_API_KEY", "")
 
     st.markdown("---")
 

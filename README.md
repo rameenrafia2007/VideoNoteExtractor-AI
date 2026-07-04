@@ -153,7 +153,7 @@ video-note-extractor/
 
 ## 🧠 Research Context
 
-This project is part of my MS Artificial Intelligence research, exploring:
+This project is part of my AI / ML Internshsip at @ZYNVEX Solutions, exploring:
 
 - **Multimodal learning** — fusion of audio, visual, and textual data streams
 - **Large Language Models** — using LLaMA 3.3 for structured knowledge extraction

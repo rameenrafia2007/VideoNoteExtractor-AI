@@ -178,11 +178,10 @@ This project is part of my MS Artificial Intelligence research, exploring:
 
 ## 👩‍💻 Author
 
-**Areeba Rameen**
-Lab Engineer — NUST SEECS, Islamabad
-MS AI Applicant | Software Engineer | AI Researcher
+**Rafia Rameen**
+Software Engineer Student | AI / ML Intern at @ZYNVEX Solutions
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue)](https://www.linkedin.com/in/areeba-rameen-139899249)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue)](https://www.linkedin.com/in/rafia-rameen-88260a344)
 
 ---
 

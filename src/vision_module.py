@@ -1,94 +1,124 @@
 """
 vision_module.py
 ----------------
-Fetches YouTube video info and thumbnail for visual context.
-No video download needed - works on cloud!
+Extracts key frames from video and runs OCR to capture
+slide text, diagrams, and on-screen visuals.
 """
 
 import os
-import urllib.request
+import cv2
+import numpy as np
+import pytesseract
 from PIL import Image
-import io
-
-
-def get_video_id(url: str) -> str:
-    import re
-    patterns = [
-        r'(?:v=|\/)([0-9A-Za-z_-]{11}).*',
-        r'(?:embed\/)([0-9A-Za-z_-]{11})',
-        r'(?:youtu\.be\/)([0-9A-Za-z_-]{11})',
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, url)
-        if match:
-            return match.group(1)
-    raise ValueError("Invalid YouTube URL")
 
 
 def download_video(video_url: str, output_dir: str) -> str:
-    """Returns video URL - no download needed."""
-    return video_url
+    """Download video for frame extraction using yt-dlp."""
+    import yt_dlp
+
+    video_path = os.path.join(output_dir, "video.mp4")
+
+    ydl_opts = {
+        "format": "bestvideo[height<=720]+bestaudio/best[height<=720]",
+        "outtmpl": video_path,
+        "quiet": True,
+        "no_warnings": True,
+        "merge_output_format": "mp4",
+        "http_headers": {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        },
+    }
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([video_url])
+
+    return video_path
 
 
 def extract_key_frames(video_path: str, interval_seconds: int = 30) -> list:
     """
-    Fetch YouTube thumbnails as visual frames.
-    No video download needed!
+    Extract one frame every `interval_seconds` seconds from the video.
+    Returns list of (timestamp_seconds, PIL.Image) tuples.
     """
-    video_id = get_video_id(video_path)
+    cap = cv2.VideoCapture(video_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    duration = total_frames / fps if fps > 0 else 0
+
     frames = []
+    frame_interval = int(fps * interval_seconds)
 
-    # YouTube provides multiple thumbnails
-    thumbnail_urls = [
-        f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg",
-        f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
-        f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg",
-    ]
+    frame_idx = 0
+    while True:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-    for i, thumb_url in enumerate(thumbnail_urls):
-        try:
-            req = urllib.request.Request(
-                thumb_url,
-                headers={"User-Agent": "Mozilla/5.0"}
-            )
-            with urllib.request.urlopen(req, timeout=10) as response:
-                img_data = response.read()
-                image = Image.open(io.BytesIO(img_data)).convert("RGB")
-                frames.append((float(i * 30), image))
-        except Exception:
-            continue
+        timestamp = frame_idx / fps
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        pil_image = Image.fromarray(rgb_frame)
+        frames.append((round(timestamp, 1), pil_image))
 
+        frame_idx += frame_interval
+        if frame_idx >= total_frames:
+            break
+
+    cap.release()
     return frames
 
 
 def is_slide_frame(image: Image.Image) -> bool:
-    import numpy as np
+    """
+    Heuristic: detect if a frame looks like a slide/presentation
+    by checking for large uniform background regions.
+    """
     gray = np.array(image.convert("L"))
-    return gray.std() < 80
+    std_dev = gray.std()
+    return std_dev < 80  # Low variance = likely a slide
 
 
 def ocr_frame(image: Image.Image) -> str:
-    try:
-        import pytesseract
-        gray = image.convert("L")
-        return pytesseract.image_to_string(gray, config="--psm 6").strip()
-    except Exception:
-        return ""
+    """Run OCR on a single frame and return extracted text."""
+    # Enhance image for better OCR
+    gray = image.convert("L")
+    text = pytesseract.image_to_string(gray, config="--psm 6")
+    return text.strip()
 
 
-def extract_visual_content(frames: list, min_text_length: int = 5) -> list:
+def extract_visual_content(frames: list, min_text_length: int = 20) -> list:
+    """
+    Run OCR on extracted frames, filter out frames with little/no text.
+    Returns list of dicts with timestamp and extracted text.
+    """
     visual_data = []
+    seen_texts = set()
+
     for timestamp, image in frames:
         text = ocr_frame(image)
-        visual_data.append({
-            "timestamp": timestamp,
-            "text": text if text else "Thumbnail frame extracted",
-            "is_slide": is_slide_frame(image),
-        })
+
+        if len(text) < min_text_length:
+            continue
+
+        # Deduplicate very similar consecutive slides
+        text_key = text[:100].strip().lower()
+        if text_key in seen_texts:
+            continue
+        seen_texts.add(text_key)
+
+        visual_data.append(
+            {
+                "timestamp": timestamp,
+                "text": text,
+                "is_slide": is_slide_frame(image),
+            }
+        )
+
     return visual_data
 
 
 def format_visual_content(visual_data: list) -> str:
+    """Format visual/OCR data for LLM consumption."""
     lines = []
     for item in visual_data:
         minutes = int(item["timestamp"]) // 60

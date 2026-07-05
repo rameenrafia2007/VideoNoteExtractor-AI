@@ -54,14 +54,14 @@ def run_pipeline(
         visual_data = extract_visual_content(frames)
         formatted_visuals = format_visual_content(visual_data)
 
-        progress("Generating notes with LLaMA 3.3 (Groq)...", 78)
+        progress("Generating notes with LLaMA 3.3...", 78)
         notes_markdown = generate_notes(
             transcript=formatted_transcript,
             visual_content=formatted_visuals,
             video_title=title,
         )
 
-        progress("Saving Markdown...", 90)
+        progress("Saving notes...", 90)
         md_filename = f"{safe_title}_notes.md"
         md_path = save_markdown(
             notes_markdown, output_dir, filename=md_filename)

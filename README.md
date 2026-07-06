@@ -20,38 +20,9 @@ Built with **OpenAI Whisper · Groq LLaMA 3.3 70B · OpenCV · Tesseract OCR · 
 ## 🏗️ System Architecture
 
 ```
-Video URL
-    │
-    ▼
-┌─────────────────────────┐
-│  Video Downloader       │  ← yt-dlp
-│  (yt-dlp)               │
-└────────┬────────────────┘
-         │
-    ┌────┴─────┐
-    ▼          ▼
-┌────────┐  ┌──────────────┐
-│ Audio  │  │ Video Frames │
-│ Module │  │ Module       │
-│        │  │              │
-│Whisper │  │OpenCV + OCR  │
-│  ASR   │  │(Tesseract)   │
-└───┬────┘  └──────┬───────┘
-    │               │
-    └──────┬────────┘
-           ▼
-┌─────────────────────────┐
-│   LLM Fusion Engine     │  ← Groq API (LLaMA 3.3 70B)
-│   (Groq + LLaMA 3.3)    │
-└────────────┬────────────┘
-             ▼
-┌─────────────────────────┐
-│   Note Structuring      │
-│   Headings · Bullets    │
-│   Tables · Summaries    │
-└────────────┬────────────┘
-             ▼
-      📄 MD  +  📕 PDF
+<img width="2720" height="2960" alt="video_note_extractor_arch_v3" src="https://github.com/user-attachments/assets/e788f817-051f-4a24-830f-6b7174c12edf" />
+
+
 ```
 
 ---

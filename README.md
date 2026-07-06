@@ -19,7 +19,7 @@ Built with **OpenAI Whisper · Groq LLaMA 3.3 70B · OpenCV · Tesseract OCR · 
 
 ## 🏗️ System Architecture
 
-```
+
  ![System Architecture](https://github.com/user-attachments/assets/e788f817-051f-4a24-830f-6b7174c12edf)
 
 

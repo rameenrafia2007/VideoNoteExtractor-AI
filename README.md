@@ -20,7 +20,8 @@ Built with **OpenAI Whisper · Groq LLaMA 3.3 70B · OpenCV · Tesseract OCR · 
 ## 🏗️ System Architecture
 
 ```
-<img width="2720" height="2960" alt="video_note_extractor_arch_v3" src="https://github.com/user-attachments/assets/e788f817-051f-4a24-830f-6b7174c12edf" />
+<img width="2720" height="2960" alt="video_note_extractor_arch_v3"<img width="2720" height="2960" alt="video_note_extractor_arch_v3" src="https://github.com/user-attachments/assets/733744cd-de97-40d9-9c4e-6218f1278cfc" />
+ src="https://github.com/user-attachments/assets/e788f817-051f-4a24-830f-6b7174c12edf" />
 
 
 ```
